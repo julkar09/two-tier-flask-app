@@ -2,7 +2,7 @@ pipeline {
     agent { label "dev" }
     tools {
         jdk 'jdk17'
-        maven 'maven3'
+        maven 'maven'
     }
     environment {
         SONAR_HOST_URL = 'http://13.234.186.141:9000/'
