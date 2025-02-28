@@ -9,6 +9,7 @@ pipeline {
         SONAR_PROJECT_KEY = 'two-tier-flask-app'
         SONAR_PROJECT_NAME = 'Two-Tier Flask App'
         SONAR_LOGIN = 'squ_bd5f7af0f00d43410d52f1ef80fba3c4754b7cc9'
+        OWASP_DC_HOME = '/opt/dependency-check' // Path to OWASP Dependency-Check installation
     }
     stages {
         stage("Code Clone") {
@@ -16,6 +17,26 @@ pipeline {
                 script {
                     git url: "https://github.com/julkar09/two-tier-flask-app.git", branch: "test"
                 }
+            }
+        }
+        stage("OWASP Dependency-Check") {
+            steps {
+                sh """
+                    # Check if OWASP Dependency-Check is installed
+                    if ! command -v ${OWASP_DC_HOME}/bin/dependency-check.sh &> /dev/null; then
+                        echo "OWASP Dependency-Check not found. Installing..."
+                        wget https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip
+                        unzip dependency-check-8.4.0-release.zip -d ${OWASP_DC_HOME}
+                        chmod +x ${OWASP_DC_HOME}/bin/dependency-check.sh
+                    fi
+
+                    # Run OWASP Dependency-Check
+                    ${OWASP_DC_HOME}/bin/dependency-check.sh \
+                        --project "two-tier-flask-app" \
+                        --scan . \
+                        --format "ALL" \
+                        --out ./odc-reports
+                """
             }
         }
         stage("Sonar Analysis") {
@@ -41,9 +62,10 @@ pipeline {
                 sh "trivy fs ."
             }
         }
-        stage("Trivy Image Scan") {
+        stage("Docker Scout Analysis") {
             steps {
-                sh "trivy image --severity HIGH,CRITICAL flask-app:0"
+                sh "docker scout quickview flask-app:0"
+                sh "docker scout cves flask-app:0"
             }
         }
         stage("Push to Docker Hub") {
