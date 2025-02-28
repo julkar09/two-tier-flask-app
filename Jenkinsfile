@@ -5,13 +5,13 @@ pipeline {
         jdk 'jdk17'
         maven 'maven'
     }
-    
+
     environment {
         SONAR_HOST_URL = 'http://13.234.186.141:9000/'
         SONAR_PROJECT_KEY = 'two-tier-flask-app'
         SONAR_PROJECT_NAME = 'Two-Tier Flask App'
     }
-    
+
     stages {
         stage("Code Clone") {
             steps {
@@ -21,23 +21,23 @@ pipeline {
 
         stage("Sonar Analysis") {
             steps {
-                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_LOGIN')]) {
-                    sh """
-                        mvn clean package
+                withSonarQubeEnv('SonarQube') {  // Use the SonarQube server configured in Jenkins
+                    sh "mvn clean package"
+                    sh ''' 
                         mvn sonar:sonar \
                             -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                             -Dsonar.projectName="${SONAR_PROJECT_NAME}" \
                             -Dsonar.java.binaries=target/classes \
                             -Dsonar.host.url=${SONAR_HOST_URL} \
-                            -Dsonar.login=${SONAR_LOGIN}
-                    """
+                            -Dsonar.login=$SONARQUBE_TOKEN
+                    '''
                 }
             }
         }
 
         stage("Build") {
             steps {
-                sh "docker build -t flask-app:${BUILD_NUMBER} ."
+                sh "docker build -t flask-app:0 ."
             }
         }
 
@@ -49,7 +49,7 @@ pipeline {
 
         stage("Docker Scout Analysis") {
             steps {
-                sh "docker scout quickview flask-app:${BUILD_NUMBER}"
+                sh "docker scout quickview flask-app:0"
             }
         }
 
@@ -57,14 +57,12 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: "dockerHubCreds",
-                    usernameVariable: "DOCKER_HUB_USER",
-                    passwordVariable: "DOCKER_HUB_PASS"
+                    passwordVariable: "dockerHubPass",
+                    usernameVariable: "dockerHubUser"
                 )]) {
-                    sh """
-                        docker login -u ${DOCKER_HUB_USER} -p ${DOCKER_HUB_PASS}
-                        docker tag flask-app:${BUILD_NUMBER} ${DOCKER_HUB_USER}/flask-app:${BUILD_NUMBER}
-                        docker push ${DOCKER_HUB_USER}/flask-app:${BUILD_NUMBER}
-                    """
+                    sh "docker login -u ${dockerHubUser} -p ${dockerHubPass}"
+                    sh "docker tag flask-app:0 ${dockerHubUser}/flask-app:0"
+                    sh "docker push ${dockerHubUser}/flask-app:0"
                 }
             }
         }
@@ -78,18 +76,14 @@ pipeline {
 
     post {
         success {
-            emailext(
-                to: 'zulkarnineador7@gmail.com',
-                subject: 'Build Successful!',
-                body: 'Good news: Your build was successful!'
-            )
+            emailext body: 'Good news: Your build was successful!',
+                     subject: 'Build Successful!',
+                     to: 'zulkarnineador7@gmail.com'
         }
         failure {
-            emailext(
-                to: 'zulkarnineador7@gmail.com',
-                subject: 'Build Failed',
-                body: 'Bad news: Your build failed.'
-            )
+            emailext body: 'Bad news: Your build failed.',
+                     subject: 'Build Failed',
+                     to: 'zulkarnineador7@gmail.com'
         }
     }
 }
