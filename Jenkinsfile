@@ -43,6 +43,14 @@ pipeline {
                 }
             }
         }
+        stage("Docker Scout Analysis") {
+            steps {
+                script {
+                    sh "docker scout quickview flask-app:0"
+                    sh "docker scout cves flask-app:0"
+                }
+            }
+        }
         stage("Push to Docker Hub") {
             steps {
                 withCredentials([usernamePassword(
