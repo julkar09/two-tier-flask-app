@@ -21,14 +21,14 @@ pipeline {
         stage("Sonar Analysis") {
             steps {
                 sh "mvn clean package"
-                sh ''' 
+                sh """ 
                     mvn sonar:sonar \
                         -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                         -Dsonar.projectName="${SONAR_PROJECT_NAME}" \
                         -Dsonar.java.binaries=target/classes \
                         -Dsonar.host.url=${SONAR_HOST_URL} \
                         -Dsonar.login=${SONAR_LOGIN}
-                '''
+                """
             }
         }
         stage("Build") {
@@ -38,17 +38,13 @@ pipeline {
         }
         stage("Trivy File System Scan") {
             steps {
-                script {
-                    sh "trivy fs ."
-                }
+                sh "trivy fs ."
             }
         }
         stage("Docker Scout Analysis") {
             steps {
-                script {
-                    sh "docker scout quickview flask-app:0"
-                    sh "docker scout cves flask-app:0"
-                }
+                sh "docker scout quickview flask-app:0"
+                sh "docker scout cves flask-app:0"
             }
         }
         stage("Push to Docker Hub") {
@@ -58,9 +54,11 @@ pipeline {
                     passwordVariable: "dockerHubPass",
                     usernameVariable: "dockerHubUser"
                 )]) {
-                    sh "docker login -u ${env.dockerHubUser} -p ${env.dockerHubPass}"
-                    sh "docker image tag flask-app:0 ${env.dockerHubUser}/flask-app:0"
-                    sh "docker push ${env.dockerHubUser}/flask-app:0"
+                    sh """
+                        echo ${env.dockerHubPass} | docker login -u ${env.dockerHubUser} --password-stdin
+                        docker image tag flask-app:0 ${env.dockerHubUser}/flask-app:0
+                        docker push ${env.dockerHubUser}/flask-app:0
+                    """
                 }
             }
         }
