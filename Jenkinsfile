@@ -8,7 +8,7 @@ pipeline {
         SONAR_HOST_URL = 'http://13.234.186.141:9000/'
         SONAR_PROJECT_KEY = 'two-tier-flask-app'
         SONAR_PROJECT_NAME = 'Two-Tier Flask App'
-        SONAR_LOGIN = 'squ_0a18a5799d96ec3a98cc61519e8d18d9ee130c2d'
+        SONAR_LOGIN = 'squ_953f24565e8f5065f1a5e409f51b37668f9ffa8c'
     }
     stages {
         stage("Code Clone") {
