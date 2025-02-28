@@ -1,84 +1,95 @@
 pipeline {
     agent { label "dev" }
+    
     tools {
         jdk 'jdk17'
         maven 'maven'
     }
+    
     environment {
         SONAR_HOST_URL = 'http://13.234.186.141:9000/'
         SONAR_PROJECT_KEY = 'two-tier-flask-app'
         SONAR_PROJECT_NAME = 'Two-Tier Flask App'
-        SONAR_LOGIN = 'squ_953f24565e8f5065f1a5e409f51b37668f9ffa8c'
     }
+    
     stages {
         stage("Code Clone") {
             steps {
-                script {
-                    git url: "https://github.com/julkar09/two-tier-flask-app.git", branch: "test"
-                }
+                git url: "https://github.com/julkar09/two-tier-flask-app.git", branch: "test"
             }
         }
+
         stage("Sonar Analysis") {
             steps {
-                sh "mvn clean package"
-                sh ''' 
-                    mvn sonar:sonar \
-                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                        -Dsonar.projectName="${SONAR_PROJECT_NAME}" \
-                        -Dsonar.java.binaries=target/classes \
-                        -Dsonar.host.url=${SONAR_HOST_URL} \
-                        -Dsonar.login=${SONAR_LOGIN}
-                '''
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_LOGIN')]) {
+                    sh """
+                        mvn clean package
+                        mvn sonar:sonar \
+                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                            -Dsonar.projectName="${SONAR_PROJECT_NAME}" \
+                            -Dsonar.java.binaries=target/classes \
+                            -Dsonar.host.url=${SONAR_HOST_URL} \
+                            -Dsonar.login=${SONAR_LOGIN}
+                    """
+                }
             }
         }
+
         stage("Build") {
             steps {
-                sh "docker build -t flask-app:0 ."
+                sh "docker build -t flask-app:${BUILD_NUMBER} ."
             }
         }
+
         stage("Trivy File System Scan") {
             steps {
-                script {
-                    sh "trivy fs ."
-                }
+                sh "trivy fs ."
             }
         }
+
         stage("Docker Scout Analysis") {
             steps {
-                script {
-                    sh "docker scout quickview flask-app:0"
-                }
+                sh "docker scout quickview flask-app:${BUILD_NUMBER}"
             }
         }
+
         stage("Push to Docker Hub") {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: "dockerHubCreds",
-                    passwordVariable: "dockerHubPass",
-                    usernameVariable: "dockerHubUser"
+                    usernameVariable: "DOCKER_HUB_USER",
+                    passwordVariable: "DOCKER_HUB_PASS"
                 )]) {
-                    sh "docker login -u ${env.dockerHubUser} -p ${env.dockerHubPass}"
-                    sh "docker image tag flask-app:0 ${env.dockerHubUser}/flask-app:0"
-                    sh "docker push ${env.dockerHubUser}/flask-app:0"
+                    sh """
+                        docker login -u ${DOCKER_HUB_USER} -p ${DOCKER_HUB_PASS}
+                        docker tag flask-app:${BUILD_NUMBER} ${DOCKER_HUB_USER}/flask-app:${BUILD_NUMBER}
+                        docker push ${DOCKER_HUB_USER}/flask-app:${BUILD_NUMBER}
+                    """
                 }
             }
         }
+
         stage("Deploy") {
             steps {
                 sh "docker compose up -d"
             }
         }
     }
+
     post {
         success {
-            emailext body: 'Good news: Your build was successful!',
-                     subject: 'Build Successful!',
-                     to: 'zulkarnineador7@gmail.com'
+            emailext(
+                to: 'zulkarnineador7@gmail.com',
+                subject: 'Build Successful!',
+                body: 'Good news: Your build was successful!'
+            )
         }
         failure {
-            emailext body: 'Bad news: Your build failed.',
-                     subject: 'Build Failed',
-                     to: 'zulkarnineador7@gmail.com'
+            emailext(
+                to: 'zulkarnineador7@gmail.com',
+                subject: 'Build Failed',
+                body: 'Bad news: Your build failed.'
+            )
         }
     }
 }
