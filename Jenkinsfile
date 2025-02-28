@@ -41,10 +41,9 @@ pipeline {
                 sh "trivy fs ."
             }
         }
-        stage("Docker Scout Analysis") {
+        stage("Trivy Image Scan") {
             steps {
-                sh "docker scout quickview flask-app:0"
-                sh "docker scout cves flask-app:0"
+                sh "trivy image --severity HIGH,CRITICAL flask-app:0"
             }
         }
         stage("Push to Docker Hub") {
