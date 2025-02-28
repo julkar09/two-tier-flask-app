@@ -14,7 +14,9 @@ pipeline {
         stage("Code Clone") {
             steps {
                 script {
-                    git url: "https://github.com/julkar09/two-tier-flask-app.git", branch: "test"
+                    def repoUrl = "https://github.com/julkar09/two-tier-flask-app.git"
+                    def branchName = "test"
+                    checkout([$class: 'GitSCM', branches: [[name: branchName]], userRemoteConfigs: [[url: repoUrl]]])
                 }
             }
         }
@@ -45,12 +47,15 @@ pipeline {
         }
         stage("Docker Scout Analysis") {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: "dockerHubCreds",
-                    passwordVariable: "dockerHubPass",
-                    usernameVariable: "dockerHubUser"
-                )]) {
-                    sh "docker scout quickview ${env.dockerHubUser}/flask-app:0"
+                script {
+                    withCredentials([usernamePassword(
+                        credentialsId: "dockerHubCreds",
+                        passwordVariable: "dockerHubPass",
+                        usernameVariable: "dockerHubUser"
+                    )]) {
+                        def imageName = "${env.dockerHubUser}/flask-app:0"
+                        sh "docker scout quickview ${imageName}"
+                    }
                 }
             }
         }
@@ -61,9 +66,12 @@ pipeline {
                     passwordVariable: "dockerHubPass",
                     usernameVariable: "dockerHubUser"
                 )]) {
-                    sh "docker login -u ${env.dockerHubUser} -p ${env.dockerHubPass}"
-                    sh "docker image tag flask-app:0 ${env.dockerHubUser}/flask-app:0"
-                    sh "docker push ${env.dockerHubUser}/flask-app:0"
+                    script {
+                        def imageName = "${env.dockerHubUser}/flask-app:0"
+                        sh "docker login -u ${env.dockerHubUser} -p ${env.dockerHubPass}"
+                        sh "docker image tag flask-app:0 ${imageName}"
+                        sh "docker push ${imageName}"
+                    }
                 }
             }
         }
