@@ -43,6 +43,17 @@ pipeline {
                 }
             }
         }
+        stage("Docker Scout Analysis") {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: "dockerHubCreds",
+                    passwordVariable: "dockerHubPass",
+                    usernameVariable: "dockerHubUser"
+                )]) {
+                    sh "docker scout quickview ${env.dockerHubUser}/flask-app:0"
+                }
+            }
+        }
         stage("Push to Docker Hub") {
             steps {
                 withCredentials([usernamePassword(
