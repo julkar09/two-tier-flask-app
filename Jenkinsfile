@@ -5,7 +5,7 @@ pipeline {
         maven 'maven'
     }
     environment {
-        SONAR_HOST_URL = 'http://13.234.186.141:9000/'
+        SONAR_HOST_URL = 'http://15.207.85.64:9000/'
         SONAR_PROJECT_KEY = 'two-tier-flask-app'
         SONAR_PROJECT_NAME = 'Two-Tier Flask App'
         SONAR_LOGIN = 'squ_e947028e658a604cd5be88fa2026d4a22e52bde5'
